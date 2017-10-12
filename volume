@@ -1,49 +1,33 @@
 #!/bin/bash
 
 # Adjust volume on Pulse Audio sink $SINK by $STEP.
-
-SINK=0
-#SINK=alsa_output.pci-0000_00_1b.0.analog-stereo
 STEP=5%
+sinkscript=$(cat << 'EOF'
+/Sink #/ { sink = substr($2, 2) }
+/State: RUNNING/ { active = 1 }
+/Description: Built-in Audio Analog Stereo/ { active = 1 }
+/Mute:/ { if (active) { printf "MUTED=%s\n", $2 } }
+/Volume: 0:/ { if (active) { sub(/%/, "", $3); printf "VOLUME=%d\n", $3 } }
+/Base Volume:/ { if (active) { printf "SINK=%d\n", sink; exit } }
+EOF
+)
+eval $(pactl list sinks | gawk "$sinkscript")
 
 get_volume_icon() {
-    local vol="$1"
-    local icon
-    if [ "${vol}" -eq "100" ]; then
-        icon="stock_volume-max"
-    elif [ "${vol}" -ge "70" ]; then
-        icon="stock_volume-high"
-    elif [ "${vol}" -ge "40" ]; then
-        icon="stock_volume-med"
-    elif [ "${vol}" -gt "0" ]; then
-        icon="stock_volume-min"
-    else
-        icon="stock_volume-0"
-    fi
-    echo "${icon}"
-}
-
-muted() {
-  pactl list sinks \
-    | grep '^[[:space:]]Mute:' \
-    | head -n $(( $SINK + 1 )) \
-    | tail -n 1 \
-    | grep yes > /dev/null
-}
-
-show() {
-  pactl list sinks \
-    | grep '^[[:space:]]Volume:' \
-    | head -n $(( $SINK + 1 )) \
-    | tail -n 1 \
-    | sed -e 's,.* \([0-9][0-9]*\)%.*,\1,'
+  if [ "$MUTED" == "yes" ]; then echo stock_volume-mute
+  elif [ "$VOLUME" -eq 100 ];  then echo stock_volume-max
+  elif [ "$VOLUME" -ge 70 ]; then echo stock_volume-high
+  elif [ "$VOLUME" -ge 40 ]; then echo stock_volume-med
+  elif [ "$VOLUME" -gt 0 ];  then echo stock_volume-min
+  else echo stock_volume-0
+  fi
 }
 
 case $1 in
   up)
     pactl set-sink-mute $SINK off
     pactl set-sink-volume $SINK +$STEP
-    if [ $(show) -gt 100 ]; then
+    if [ "$VOLUME" -gt 100 ]; then
       pactl set-sink-volume $SINK 100%
     fi
     ;;
@@ -54,16 +38,11 @@ case $1 in
     pactl set-sink-mute $SINK toggle
     ;;
   show)
-    show
+    echo $VOLUME
     ;;
 esac
 
-vol=$(show)
-if muted; then
-  notify-send -i stock_volume-mute -h int:value:$vol -h string:synchronous:volume "Volume: $vol%"
-else
-  notify-send -i "$(get_volume_icon $vol)" \
-    -h int:value:$vol \
-    -h string:synchronous:volume \
-    "Volume: $vol%"
-fi
+notify-send -i "$(get_volume_icon $VOLUME)" \
+  -h int:value:$VOLUME \
+  -h string:synchronous:volume \
+  "Volume: $VOLUME%"
