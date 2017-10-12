@@ -1,0 +1,18 @@
+#!/bin/bash
+
+value=$(printf "%.0f" $(xbacklight -get))
+
+case $1 in
+  up)
+    value=$((value + 10))
+    ;;
+  down)
+    value=$((value - 10))
+    ;;
+esac
+
+notify-send -i display \
+  -h int:value:$value \
+  -h string:synchronous:backlight \
+  "Backlight: $value%"
+xbacklight -set $value

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+node=/org/freedesktop/UPower/devices/battery_BAT0
+value=$(upower -i $node | gawk '/percentage/ { printf "%.0f", $2 }')
+notify-send -i battery \
+  -h int:value:$value \
+  -h string:synchronous:battery \
+  "Battery: $value%"

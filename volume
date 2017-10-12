@@ -1,0 +1,69 @@
+#!/bin/bash
+
+# Adjust volume on Pulse Audio sink $SINK by $STEP.
+
+SINK=0
+#SINK=alsa_output.pci-0000_00_1b.0.analog-stereo
+STEP=5%
+
+get_volume_icon() {
+    local vol="$1"
+    local icon
+    if [ "${vol}" -eq "100" ]; then
+        icon="stock_volume-max"
+    elif [ "${vol}" -ge "70" ]; then
+        icon="stock_volume-high"
+    elif [ "${vol}" -ge "40" ]; then
+        icon="stock_volume-med"
+    elif [ "${vol}" -gt "0" ]; then
+        icon="stock_volume-min"
+    else
+        icon="stock_volume-0"
+    fi
+    echo "${icon}"
+}
+
+muted() {
+  pactl list sinks \
+    | grep '^[[:space:]]Mute:' \
+    | head -n $(( $SINK + 1 )) \
+    | tail -n 1 \
+    | grep yes > /dev/null
+}
+
+show() {
+  pactl list sinks \
+    | grep '^[[:space:]]Volume:' \
+    | head -n $(( $SINK + 1 )) \
+    | tail -n 1 \
+    | sed -e 's,.* \([0-9][0-9]*\)%.*,\1,'
+}
+
+case $1 in
+  up)
+    pactl set-sink-mute $SINK off
+    pactl set-sink-volume $SINK +$STEP
+    if [ $(show) -gt 100 ]; then
+      pactl set-sink-volume $SINK 100%
+    fi
+    ;;
+  down)
+    pactl set-sink-volume $SINK -- -$STEP
+    ;;
+  mute)
+    pactl set-sink-mute $SINK toggle
+    ;;
+  show)
+    show
+    ;;
+esac
+
+vol=$(show)
+if muted; then
+  notify-send -i stock_volume-mute -h int:value:$vol -h string:synchronous:volume "Volume: $vol%"
+else
+  notify-send -i "$(get_volume_icon $vol)" \
+    -h int:value:$vol \
+    -h string:synchronous:volume \
+    "Volume: $vol%"
+fi
