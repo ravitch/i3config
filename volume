@@ -27,9 +27,6 @@ case $1 in
   up)
     pactl set-sink-mute $SINK off
     pactl set-sink-volume $SINK +$STEP
-    if [ "$VOLUME" -gt 100 ]; then
-      pactl set-sink-volume $SINK 100%
-    fi
     ;;
   down)
     pactl set-sink-volume $SINK -- -$STEP
@@ -42,6 +39,10 @@ case $1 in
     ;;
 esac
 
+eval $(pactl list sinks | gawk "$sinkscript")
+if [ "$VOLUME" -gt 100 ]; then
+  pactl set-sink-volume $SINK 100%
+fi
 notify-send -i "$(get_volume_icon $VOLUME)" \
   -h int:value:$VOLUME \
   -h string:synchronous:volume \
