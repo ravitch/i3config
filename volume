@@ -8,9 +8,11 @@ sinkscript=$(cat << 'EOF'
 /Description: Built-in Audio Analog Stereo/ { active = 1 }
 /Mute:/ { if (active) { printf "MUTED=%s\n", $2 } }
 /Volume: 0:/ { if (active) { sub(/%/, "", $3); printf "VOLUME=%d\n", $3 } }
+/Volume: front-left:/ { if (active) {sub(/%/, "", $5); printf "VOLUME=%d\n", $5 } }
 /Base Volume:/ { if (active) { printf "SINK=%d\n", sink; exit } }
 EOF
 )
+echo $(pactl list sinks | gawk "$sinkscript")
 eval $(pactl list sinks | gawk "$sinkscript")
 
 get_volume_icon() {
@@ -29,7 +31,9 @@ case $1 in
     pactl set-sink-volume $SINK +$STEP
     ;;
   down)
-    pactl set-sink-volume $SINK -- -$STEP
+    if ! pactl set-sink-volume $SINK -- -$STEP > /dev/null 2&>1; then
+        pactl set-sink-volume $SINK -$STEP
+    fi
     ;;
   mute)
     pactl set-sink-mute $SINK toggle
