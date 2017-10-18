@@ -31,8 +31,8 @@ case $1 in
     pactl set-sink-volume $SINK +$STEP
     ;;
   down)
-    if ! pactl set-sink-volume $SINK -- -$STEP > /dev/null 2&>1; then
-        pactl set-sink-volume $SINK -$STEP
+    if ! pactl set-sink-volume $SINK -- -$STEP; then
+      pactl set-sink-volume $SINK -$STEP
     fi
     ;;
   mute)
